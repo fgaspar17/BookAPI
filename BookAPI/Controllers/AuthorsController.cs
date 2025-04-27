@@ -17,9 +17,9 @@ public class AuthorsController : ControllerBase
 
     // GET: api/Authors
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<Author>>> GetAuthors()
+    public async Task<ActionResult<IEnumerable<Author>>> GetAuthors(CancellationToken ct)
     {
-        var authors = await _context.Authors.ToListAsync();
+        var authors = await _context.Authors.ToListAsync(cancellationToken: ct);
         if (authors.Count == 0)
             return Problem("There are no authors", statusCode: 404);
 
@@ -28,9 +28,9 @@ public class AuthorsController : ControllerBase
 
     // GET: api/Authors/5
     [HttpGet("{id}")]
-    public async Task<ActionResult<Author>> GetAuthor(int id)
+    public async Task<ActionResult<Author>> GetAuthor(int id, CancellationToken ct)
     {
-        var author = await _context.Authors.FindAsync(id);
+        var author = await _context.Authors.FindAsync([id], cancellationToken: ct);
 
         if (author == null)
             return Problem($"There is no author wiht Id: {id}", statusCode: 404);
@@ -41,12 +41,12 @@ public class AuthorsController : ControllerBase
     // PUT: api/Authors/5
     // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
     [HttpPut("{id}")]
-    public async Task<IActionResult> PutAuthor(int id, Author value)
+    public async Task<IActionResult> PutAuthor(int id, Author value, CancellationToken ct)
     {
         if (id != value.AuthorId)
             return BadRequest("Id isn't the same.");
 
-        var author = await _context.Authors.FindAsync(id);
+        var author = await _context.Authors.FindAsync([id], cancellationToken: ct);
         if (author == null)
             return Problem($"There is no author with Id: {id}", statusCode: 404);
 
@@ -54,7 +54,7 @@ public class AuthorsController : ControllerBase
         author.LastName = value.LastName;
         author.Birthday = value.Birthday;
 
-        await _context.SaveChangesAsync();
+        await _context.SaveChangesAsync(cancellationToken: ct);
 
         return NoContent();
     }
@@ -62,24 +62,25 @@ public class AuthorsController : ControllerBase
     // POST: api/Authors
     // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
     [HttpPost]
-    public async Task<ActionResult<Author>> PostAuthor(Author author)
+    public async Task<ActionResult<Author>> PostAuthor(Author author, CancellationToken ct)
     {
-        await _context.Authors.AddAsync(author);
-        await _context.SaveChangesAsync();
+        _context.Authors.Add(author);
+        await _context.SaveChangesAsync(cancellationToken: ct);
 
         return CreatedAtAction(nameof(GetAuthor), new { id = author.AuthorId }, author);
     }
 
     // DELETE: api/Authors/5
     [HttpDelete("{id}")]
-    public async Task<IActionResult> DeleteAuthor(int id)
+    public async Task<IActionResult> DeleteAuthor(int id, CancellationToken ct)
     {
-        var author = await _context.Authors.FindAsync(id);
+        var author = await _context.Authors.FindAsync([id], cancellationToken: ct);
+
         if (author == null)
             return Problem($"There is no author with Id: {id}", statusCode: 404);
 
         _context.Authors.Remove(author);
-        await _context.SaveChangesAsync();
+        await _context.SaveChangesAsync(cancellationToken: ct);
 
         return NoContent();
     }

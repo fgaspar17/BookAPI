@@ -23,26 +23,26 @@ namespace BookAPI.Controllers
         // POST: api/AuthorBooks
         // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPost]
-        public async Task<ActionResult<AuthorBook>> PostAuthorBook(AuthorBook authorBook)
+        public async Task<ActionResult<AuthorBook>> PostAuthorBook(AuthorBook authorBook, CancellationToken ct)
         {
-            await _context.AuthorBooks.AddAsync(authorBook);
-            await _context.SaveChangesAsync();
+            _context.AuthorBooks.Add(authorBook);
+            await _context.SaveChangesAsync(cancellationToken: ct);
 
             return Created();
         }
 
         // DELETE: api/AuthorBooks/5
         [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteAuthorBook(int id)
+        public async Task<IActionResult> DeleteAuthorBook(int id, CancellationToken ct)
         {
-            var authorBook = await _context.AuthorBooks.FindAsync(id);
+            var authorBook = await _context.AuthorBooks.FindAsync([id], cancellationToken: ct);
             if (authorBook == null)
             {
                 return NotFound();
             }
 
             _context.AuthorBooks.Remove(authorBook);
-            await _context.SaveChangesAsync();
+            await _context.SaveChangesAsync(cancellationToken: ct);
 
             return NoContent();
         }
