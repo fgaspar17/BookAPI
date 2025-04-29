@@ -17,9 +17,9 @@ public class SeedDataController : ControllerBase
     }
 
 
-    // PUT api/<SeedDataController>/5
+    // POST api/<SeedDataController>/5
     [HttpPost("seed")]
-    public async Task<ActionResult> Put(CancellationToken ct)
+    public async Task<ActionResult> Post(CancellationToken ct)
     {
         if (_context.Books.Any() || _context.Authors.Any())
             return BadRequest("Database contains data");

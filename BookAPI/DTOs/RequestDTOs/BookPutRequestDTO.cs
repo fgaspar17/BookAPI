@@ -1,11 +1,9 @@
-﻿using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
-using System.Text.Json.Serialization;
+﻿using BookAPI.Models;
+using System.ComponentModel.DataAnnotations;
 
-namespace BookAPI.Models;
+namespace BookAPI.DTOs.RequestDTOs;
 
-[Table("Books")]
-public class Book
+public class BookPutRequestDto
 {
     [Key]
     public int BookId { get; set; }
@@ -17,5 +15,4 @@ public class Book
     public int Pages { get; set; }
     [DataType(DataType.Date)]
     public DateTime PublicationDate { get; set; }
-    public IEnumerable<AuthorBook>? BookAuthors { get; set; }
 }
