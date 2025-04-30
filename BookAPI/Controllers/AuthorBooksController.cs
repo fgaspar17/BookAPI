@@ -6,6 +6,8 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using BookAPI.Models;
+using BookAPI.DTOs.RequestDTOs;
+using BookAPI.Mappers;
 
 namespace BookAPI.Controllers
 {
@@ -22,8 +24,12 @@ namespace BookAPI.Controllers
 
         // POST: api/AuthorBooks
         [HttpPost]
-        public async Task<ActionResult<AuthorBook>> PostAuthorBook(AuthorBook authorBook, CancellationToken ct)
+        public async Task<ActionResult<AuthorBook>> PostAuthorBook(AuthorBookPostRequestDto authorBookRequest, CancellationToken ct)
         {
+            var authorBook = authorBookRequest.MapToEntity();
+            if (authorBook is null)
+                return BadRequest("No AuthorBook data provided.");
+
             _context.AuthorBooks.Add(authorBook);
             await _context.SaveChangesAsync(cancellationToken: ct);
 

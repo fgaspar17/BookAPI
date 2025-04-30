@@ -1,4 +1,7 @@
-﻿using BookAPI.Models;
+﻿using BookAPI.DTOs.RequestDTOs;
+using BookAPI.DTOs.ResponseDTOs;
+using BookAPI.Mappers;
+using BookAPI.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -18,30 +21,42 @@ public class BooksController : ControllerBase
 
     // GET: <BooksController>
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<Book>>> GetBooks(CancellationToken ct)
+    public async Task<ActionResult<IEnumerable<BookGetResponseDto>>> GetBooks(CancellationToken ct)
     {
-        var books = await _context.Books.ToListAsync(cancellationToken: ct); 
+        var books = await _context.Books
+            .Include(ab => ab.BookAuthors)
+                .ThenInclude(a => a.Author)
+            .ToListAsync(cancellationToken: ct);
+
         if (books.Count == 0)
             return Problem("There are no books", statusCode: 404);
 
-        return Ok(books);
+        return Ok(books.Select(b => b.MapToDto()));
     }
 
     // GET <BooksController>/5
     [HttpGet("{id}")]
     public async Task<ActionResult<Book>> GetBook(int id, CancellationToken ct)
     {
-        var book = await _context.Books.FindAsync([id], cancellationToken: ct);
+        var book = await _context.Books
+            .Include(ab => ab.BookAuthors)
+                .ThenInclude(a => a.Author)
+            .FirstOrDefaultAsync(b => b.BookId == id, cancellationToken: ct);
+
         if (book == null)
             return Problem($"There is no book wiht Id: {id}", statusCode: 404);
 
-        return Ok(book);
+        return Ok(book.MapToDto());
     }
 
     // POST <BooksController>
     [HttpPost]
-    public async Task<ActionResult> Post([FromBody] Book value, CancellationToken ct)
+    public async Task<ActionResult> Post([FromBody] BookPostRequestDto requestDto, CancellationToken ct)
     {
+        var value = requestDto.MapToEntity();
+        if (value == null)
+            return BadRequest("No Book data provided.");
+
         _context.Books.Add(value);
         await _context.SaveChangesAsync(cancellationToken: ct);
 
@@ -50,8 +65,12 @@ public class BooksController : ControllerBase
 
     // PUT <BooksController>/5
     [HttpPut("{id}")]
-    public async Task<ActionResult> Put(int id, [FromBody] Book value, CancellationToken ct)
+    public async Task<ActionResult> Put(int id, [FromBody] BookPutRequestDto requestDto, CancellationToken ct)
     {
+        var value = requestDto.MapToEntity();
+        if (value == null)
+            return BadRequest("No Book data provided.");
+
         if (id != value.BookId)
             return BadRequest("Id isn't the same.");
 

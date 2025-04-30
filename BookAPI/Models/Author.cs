@@ -17,5 +17,5 @@ public class Author
     public DateTime Birthday { get; set; }
     [NotMapped]
     public string FullName => $"{FirstName} {LastName}";
-    public IEnumerable<AuthorBook>? AuthorBooks { get; set; }
+    public IEnumerable<AuthorBook>? AuthorBooks { get; set; } = new List<AuthorBook>();
 }

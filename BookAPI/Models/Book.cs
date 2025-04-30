@@ -17,5 +17,5 @@ public class Book
     public int Pages { get; set; }
     [DataType(DataType.Date)]
     public DateTime PublicationDate { get; set; }
-    public IEnumerable<AuthorBook>? BookAuthors { get; set; }
+    public IEnumerable<AuthorBook> BookAuthors { get; set; } = new List<AuthorBook>();
 }

@@ -1,4 +1,7 @@
-﻿using BookAPI.Models;
+﻿using BookAPI.DTOs.RequestDTOs;
+using BookAPI.DTOs.ResponseDTOs;
+using BookAPI.Mappers;
+using BookAPI.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -17,31 +20,41 @@ public class AuthorsController : ControllerBase
 
     // GET: api/Authors
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<Author>>> GetAuthors(CancellationToken ct)
+    public async Task<ActionResult<IEnumerable<AuthorGetResponseDto>>> GetAuthors(CancellationToken ct)
     {
-        var authors = await _context.Authors.ToListAsync(cancellationToken: ct);
+        var authors = await _context.Authors
+            .Include(author => author.AuthorBooks)
+                .ThenInclude(ab => ab.Author)
+            .ToListAsync(cancellationToken: ct);
         if (authors.Count == 0)
             return Problem("There are no authors", statusCode: 404);
 
-        return Ok(authors);
+        return Ok(authors.Select(author => author.MapToDto()));
     }
 
     // GET: api/Authors/5
     [HttpGet("{id}")]
-    public async Task<ActionResult<Author>> GetAuthor(int id, CancellationToken ct)
+    public async Task<ActionResult<AuthorGetResponseDto>> GetAuthor(int id, CancellationToken ct)
     {
-        var author = await _context.Authors.FindAsync([id], cancellationToken: ct);
+        var author = await _context.Authors
+            .Include(author => author.AuthorBooks)
+                .ThenInclude(ab => ab.Author)
+            .FirstOrDefaultAsync(a => a.AuthorId == id, cancellationToken: ct);
 
         if (author == null)
             return Problem($"There is no author wiht Id: {id}", statusCode: 404);
 
-        return Ok(author);
+        return Ok(author.MapToDto());
     }
 
     // PUT: api/Authors/5
     [HttpPut("{id}")]
-    public async Task<IActionResult> PutAuthor(int id, Author value, CancellationToken ct)
+    public async Task<IActionResult> PutAuthor(int id, AuthorPutRequestDto requestDto, CancellationToken ct)
     {
+        var value = requestDto.MapToEntity();
+        if (value == null)
+            return BadRequest("No Author data provided.");
+
         if (id != value.AuthorId)
             return BadRequest("Id isn't the same.");
 
@@ -60,12 +73,16 @@ public class AuthorsController : ControllerBase
 
     // POST: api/Authors
     [HttpPost]
-    public async Task<ActionResult<Author>> PostAuthor(Author author, CancellationToken ct)
+    public async Task<ActionResult<Author>> PostAuthor(AuthorPostRequestDto authorRequest, CancellationToken ct)
     {
-        _context.Authors.Add(author);
+        var value = authorRequest.MapToEntity();
+        if (value == null)
+            return BadRequest();
+
+        _context.Authors.Add(value);
         await _context.SaveChangesAsync(cancellationToken: ct);
 
-        return CreatedAtAction(nameof(GetAuthor), new { id = author.AuthorId }, author);
+        return CreatedAtAction(nameof(GetAuthor), new { id = value.AuthorId }, value);
     }
 
     // DELETE: api/Authors/5
