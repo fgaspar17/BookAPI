@@ -2,6 +2,7 @@
 using BookAPI.DTOs.ResponseDTOs;
 using BookAPI.Mappers;
 using BookAPI.Models;
+using BookAPI.Repositories;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -12,21 +13,21 @@ namespace BookAPI.Controllers;
 public class AuthorsController : ControllerBase
 {
     private readonly AppDbContext _context;
+    private readonly IAuthorRepository _repository;
 
-    public AuthorsController(AppDbContext context)
+    public AuthorsController(AppDbContext context, IAuthorRepository repository)
     {
         _context = context;
+        _repository = repository;
+
     }
 
     // GET: api/Authors
     [HttpGet]
     public async Task<ActionResult<IEnumerable<AuthorGetResponseDto>>> GetAuthors(CancellationToken ct)
     {
-        var authors = await _context.Authors
-            .Include(author => author.AuthorBooks)
-                .ThenInclude(ab => ab.Author)
-            .ToListAsync(cancellationToken: ct);
-        if (authors.Count == 0)
+        var authors = await _repository.GetAllAsync(ct);
+        if (authors.Count() == 0)
             return Problem("There are no authors", statusCode: 404);
 
         return Ok(authors.Select(author => author.MapToDto()));
@@ -36,10 +37,7 @@ public class AuthorsController : ControllerBase
     [HttpGet("{id}")]
     public async Task<ActionResult<AuthorGetResponseDto>> GetAuthor(int id, CancellationToken ct)
     {
-        var author = await _context.Authors
-            .Include(author => author.AuthorBooks)
-                .ThenInclude(ab => ab.Author)
-            .FirstOrDefaultAsync(a => a.AuthorId == id, cancellationToken: ct);
+        var author = await _repository.GetByIdAsync(id, ct);
 
         if (author == null)
             return Problem($"There is no author wiht Id: {id}", statusCode: 404);
@@ -62,11 +60,7 @@ public class AuthorsController : ControllerBase
         if (author == null)
             return Problem($"There is no author with Id: {id}", statusCode: 404);
 
-        author.FirstName = value.FirstName;
-        author.LastName = value.LastName;
-        author.Birthday = value.Birthday;
-
-        await _context.SaveChangesAsync(cancellationToken: ct);
+        await _repository.UpdateAsync(value, ct);
 
         return NoContent();
     }
@@ -79,8 +73,7 @@ public class AuthorsController : ControllerBase
         if (value == null)
             return BadRequest();
 
-        _context.Authors.Add(value);
-        await _context.SaveChangesAsync(cancellationToken: ct);
+        await _repository.InsertAsync(value, ct);
 
         return CreatedAtAction(nameof(GetAuthor), new { id = value.AuthorId }, value);
     }
@@ -94,8 +87,7 @@ public class AuthorsController : ControllerBase
         if (author == null)
             return Problem($"There is no author with Id: {id}", statusCode: 404);
 
-        _context.Authors.Remove(author);
-        await _context.SaveChangesAsync(cancellationToken: ct);
+        await _repository.DeleteAsync(author, ct);
 
         return NoContent();
     }

@@ -8,6 +8,7 @@ using Microsoft.EntityFrameworkCore;
 using BookAPI.Models;
 using BookAPI.DTOs.RequestDTOs;
 using BookAPI.Mappers;
+using BookAPI.Repositories;
 
 namespace BookAPI.Controllers
 {
@@ -16,10 +17,12 @@ namespace BookAPI.Controllers
     public class AuthorBooksController : ControllerBase
     {
         private readonly AppDbContext _context;
+        private readonly IAuthorBookRepository _repository;
 
-        public AuthorBooksController(AppDbContext context)
+        public AuthorBooksController(AppDbContext context, IAuthorBookRepository repository)
         {
             _context = context;
+            _repository = repository;
         }
 
         // POST: api/AuthorBooks
@@ -30,24 +33,25 @@ namespace BookAPI.Controllers
             if (authorBook is null)
                 return BadRequest("No AuthorBook data provided.");
 
-            _context.AuthorBooks.Add(authorBook);
-            await _context.SaveChangesAsync(cancellationToken: ct);
+            await _repository.InsertAsync(authorBook, ct);
 
             return Created();
         }
 
         // DELETE: api/AuthorBooks/5
-        [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteAuthorBook(int id, CancellationToken ct)
+        [HttpDelete("{authorId} {bookId}")]
+        public async Task<IActionResult> DeleteAuthorBook(int authorId, int bookId, CancellationToken ct)
         {
-            var authorBook = await _context.AuthorBooks.FindAsync([id], cancellationToken: ct);
+            var authorBook = await _context.AuthorBooks
+                .Where(ab => ab.AuthorId == authorId && ab.BookId == bookId)
+                .SingleOrDefaultAsync();
+
             if (authorBook == null)
             {
                 return NotFound();
             }
 
-            _context.AuthorBooks.Remove(authorBook);
-            await _context.SaveChangesAsync(cancellationToken: ct);
+            await _repository.DeleteAsync(authorBook, ct);
 
             return NoContent();
         }

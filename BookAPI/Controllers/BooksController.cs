@@ -2,6 +2,7 @@
 using BookAPI.DTOs.ResponseDTOs;
 using BookAPI.Mappers;
 using BookAPI.Models;
+using BookAPI.Repositories;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -14,21 +15,20 @@ namespace BookAPI.Controllers;
 public class BooksController : ControllerBase
 {
     private readonly AppDbContext _context;
-    public BooksController(AppDbContext context)
+    private readonly IBookRepository _repository;
+    public BooksController(AppDbContext context, IBookRepository repository)
     {
         _context = context;
+        _repository = repository;
     }
 
     // GET: <BooksController>
     [HttpGet]
     public async Task<ActionResult<IEnumerable<BookGetResponseDto>>> GetBooks(CancellationToken ct)
     {
-        var books = await _context.Books
-            .Include(ab => ab.BookAuthors)
-                .ThenInclude(a => a.Author)
-            .ToListAsync(cancellationToken: ct);
+        var books = await _repository.GetAllAsync(ct);
 
-        if (books.Count == 0)
+        if (books.Count() == 0)
             return Problem("There are no books", statusCode: 404);
 
         return Ok(books.Select(b => b.MapToDto()));
@@ -38,10 +38,7 @@ public class BooksController : ControllerBase
     [HttpGet("{id}")]
     public async Task<ActionResult<Book>> GetBook(int id, CancellationToken ct)
     {
-        var book = await _context.Books
-            .Include(ab => ab.BookAuthors)
-                .ThenInclude(a => a.Author)
-            .FirstOrDefaultAsync(b => b.BookId == id, cancellationToken: ct);
+        var book = await _repository.GetByIdAsync(id, ct);
 
         if (book == null)
             return Problem($"There is no book wiht Id: {id}", statusCode: 404);
@@ -57,8 +54,7 @@ public class BooksController : ControllerBase
         if (value == null)
             return BadRequest("No Book data provided.");
 
-        _context.Books.Add(value);
-        await _context.SaveChangesAsync(cancellationToken: ct);
+        await _repository.InsertAsync(value, ct);
 
         return CreatedAtAction(nameof(GetBook), new { id = value.BookId }, value);
     }
@@ -78,12 +74,7 @@ public class BooksController : ControllerBase
         if (book == null)
             return Problem($"There is no book with Id: {id}", statusCode: 404);
 
-        book.Title = value.Title;
-        book.Description = value.Description;
-        book.Pages = value.Pages;
-        book.PublicationDate = value.PublicationDate;
-
-        await _context.SaveChangesAsync(cancellationToken: ct);
+        await _repository.UpdateAsync(value, ct);
 
         return NoContent();
     }
@@ -96,8 +87,7 @@ public class BooksController : ControllerBase
         if (book == null)
             return Problem($"There is no book with Id: {id}", statusCode: 404);
 
-        _context.Books.Remove(book);
-        await _context.SaveChangesAsync(cancellationToken: ct);
+        await _repository.DeleteAsync(book, ct);
 
         return NoContent();
     }
