@@ -3,10 +3,10 @@ using Microsoft.EntityFrameworkCore;
 
 namespace BookAPI.Repositories;
 
-public class AuthorRepository : IAuthorRepository
+public class AuthorsRepository : IAuthorsRepository
 {
     private readonly AppDbContext _context;
-    public AuthorRepository(AppDbContext context)
+    public AuthorsRepository(AppDbContext context)
     {
         _context = context;
     }

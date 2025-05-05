@@ -1,5 +1,6 @@
 using BookAPI.Models;
 using BookAPI.Repositories;
+using BookAPI.Services;
 using Microsoft.EntityFrameworkCore;
 using Scalar.AspNetCore;
 
@@ -10,9 +11,13 @@ builder.Services.AddDbContext<AppDbContext>(options =>
  builder.Configuration.GetConnectionString("DefaultConnection"))
  );
 
-builder.Services.AddTransient<IBookRepository, BookRepository>();
-builder.Services.AddTransient<IAuthorRepository, AuthorRepository>();
-builder.Services.AddTransient<IAuthorBookRepository, AuthorBookRepository>();
+builder.Services.AddTransient<IBooksRepository, BooksRepository>();
+builder.Services.AddTransient<IAuthorsRepository, AuthorsRepository>();
+builder.Services.AddTransient<IAuthorBooksRepository, AuthorBooksRepository>();
+
+builder.Services.AddTransient<IAuthorsService, AuthorsService>();
+builder.Services.AddTransient<IBooksService, BooksService>();
+builder.Services.AddTransient<IAuthorBooksService, AuthorBooksService>();
 
 builder.Services.AddControllers();
 

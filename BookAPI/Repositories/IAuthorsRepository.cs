@@ -2,7 +2,7 @@
 
 namespace BookAPI.Repositories;
 
-public interface IAuthorRepository
+public interface IAuthorsRepository
 {
     public Task<Author?> GetByIdAsync(int id, CancellationToken ct);
     public Task<IEnumerable<Author>> GetAllAsync(CancellationToken ct);

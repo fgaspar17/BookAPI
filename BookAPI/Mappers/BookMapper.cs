@@ -8,8 +8,6 @@ public static class BookMapper
 {
     public static Book? MapToEntity(this BookPostRequestDto bookRequest)
     {
-        if (bookRequest == null) return null;
-
         return new Book
         {
             Title = bookRequest.Title,
@@ -21,8 +19,6 @@ public static class BookMapper
 
     public static Book? MapToEntity(this BookPutRequestDto bookRequest)
     {
-        if (bookRequest == null) return null;
-
         return new Book
         {
             BookId = bookRequest.BookId,
@@ -35,8 +31,6 @@ public static class BookMapper
 
     public static BookShortDto? MapToShortDto(this Book book)
     {
-        if (book == null) return null;
-
         return new BookShortDto
         {
             BookId = book.BookId,
@@ -44,11 +38,9 @@ public static class BookMapper
         };
     }
 
-    public static BookGetResponseDto? MapToDto(this Book book)
+    public static BookResponseDTO? MapToDto(this Book book)
     {
-        if (book == null) return null;
-
-        return new BookGetResponseDto
+        return new BookResponseDTO
         {
             BookId = book.BookId,
             Title = book.Title,

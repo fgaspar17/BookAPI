@@ -3,7 +3,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace BookAPI.DTOs.ResponseDTOs;
 
-public class BookGetResponseDto
+public class BookResponseDTO
 {
     [Key]
     public int BookId { get; set; }

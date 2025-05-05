@@ -8,8 +8,6 @@ public static class AuthorMapper
 {
     public static Author? MapToEntity(this AuthorPostRequestDto authorRequest)
     {
-        if (authorRequest == null) return null;
-
         return new Author
         {
             FirstName = authorRequest.FirstName,
@@ -20,8 +18,6 @@ public static class AuthorMapper
 
     public static Author? MapToEntity(this AuthorPutRequestDto authorRequest)
     {
-        if (authorRequest == null) return null;
-
         return new Author
         {
             AuthorId = authorRequest.AuthorId,
@@ -33,8 +29,6 @@ public static class AuthorMapper
 
     public static AuthorShortDto? MapToShortDto(this Author author)
     {
-        if (author == null) return null;
-
         return new AuthorShortDto
         {
             AuthorId = author.AuthorId,
@@ -42,11 +36,9 @@ public static class AuthorMapper
         };
     }
 
-    public static AuthorGetResponseDto? MapToDto(this Author author)
+    public static AuthorResponseDTO? MapToDto(this Author author)
     {
-        if (author == null) return null;
-
-        return new AuthorGetResponseDto
+        return new AuthorResponseDTO
         {
             AuthorId = author.AuthorId,
             FirstName = author.FirstName,

@@ -2,7 +2,7 @@
 
 namespace BookAPI.Repositories;
 
-public interface IBookRepository
+public interface IBooksRepository
 {
     public Task<Book?> GetByIdAsync(int id, CancellationToken ct);
     public Task<IEnumerable<Book>> GetAllAsync(CancellationToken ct);

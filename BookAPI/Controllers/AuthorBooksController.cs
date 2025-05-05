@@ -1,59 +1,56 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
+﻿using BookAPI.DTOs.RequestDTOs;
 using BookAPI.Models;
-using BookAPI.DTOs.RequestDTOs;
-using BookAPI.Mappers;
 using BookAPI.Repositories;
+using BookAPI.Services;
+using BookAPI.Services.Result;
+using Microsoft.AspNetCore.Mvc;
 
-namespace BookAPI.Controllers
+namespace BookAPI.Controllers;
+
+[Route("api/[controller]")]
+[ApiController]
+public class AuthorBooksController : ControllerBase
 {
-    [Route("api/[controller]")]
-    [ApiController]
-    public class AuthorBooksController : ControllerBase
+    private readonly IAuthorBooksService _service;
+
+    public AuthorBooksController(AppDbContext context, IAuthorBooksRepository repository, IAuthorBooksService service)
     {
-        private readonly AppDbContext _context;
-        private readonly IAuthorBookRepository _repository;
+        _service = service;
+    }
 
-        public AuthorBooksController(AppDbContext context, IAuthorBookRepository repository)
+    // POST: api/AuthorBooks
+    [HttpPost]
+    public async Task<ActionResult<AuthorBook>> PostAuthorBook(AuthorBookPostRequestDto requestDto, CancellationToken ct)
+    {
+        var serviceResult = await _service.CreateAuthorBookAsync(requestDto, ct);
+
+        if (!serviceResult.Success)
         {
-            _context = context;
-            _repository = repository;
-        }
-
-        // POST: api/AuthorBooks
-        [HttpPost]
-        public async Task<ActionResult<AuthorBook>> PostAuthorBook(AuthorBookPostRequestDto authorBookRequest, CancellationToken ct)
-        {
-            var authorBook = authorBookRequest.MapToEntity();
-            if (authorBook is null)
-                return BadRequest("No AuthorBook data provided.");
-
-            await _repository.InsertAsync(authorBook, ct);
-
-            return Created();
-        }
-
-        // DELETE: api/AuthorBooks/5
-        [HttpDelete("{authorId} {bookId}")]
-        public async Task<IActionResult> DeleteAuthorBook(int authorId, int bookId, CancellationToken ct)
-        {
-            var authorBook = await _context.AuthorBooks
-                .Where(ab => ab.AuthorId == authorId && ab.BookId == bookId)
-                .SingleOrDefaultAsync();
-
-            if (authorBook == null)
+            return serviceResult.ErrorCode switch
             {
-                return NotFound();
-            }
-
-            await _repository.DeleteAsync(authorBook, ct);
-
-            return NoContent();
+                ServiceErrorCode.ValidationError => Problem(serviceResult.ErrorMessage, statusCode: 400),
+                _ => Problem("Internal Error", statusCode: 500)
+            };
         }
+
+        return Created();
+    }
+
+    // DELETE: api/AuthorBooks/5
+    [HttpDelete("authorId={authorId}&bookId={bookId}")]
+    public async Task<IActionResult> DeleteAuthorBook(int authorId, int bookId, CancellationToken ct)
+    {
+        var serviceResult = await _service.DeleteAuthorBookAsync(authorId, bookId, ct);
+
+        if (!serviceResult.Success)
+        {
+            return serviceResult.ErrorCode switch
+            {
+                ServiceErrorCode.NotFound => Problem(serviceResult.ErrorMessage, statusCode: 404),
+                _ => Problem("Internal Error", statusCode: 500)
+            };
+        }
+
+        return NoContent();
     }
 }

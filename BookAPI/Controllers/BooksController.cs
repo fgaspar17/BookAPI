@@ -1,10 +1,10 @@
 ﻿using BookAPI.DTOs.RequestDTOs;
 using BookAPI.DTOs.ResponseDTOs;
-using BookAPI.Mappers;
 using BookAPI.Models;
 using BookAPI.Repositories;
+using BookAPI.Services;
+using BookAPI.Services.Result;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 // For more information on enabling Web API for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
 
@@ -14,80 +14,99 @@ namespace BookAPI.Controllers;
 [ApiController]
 public class BooksController : ControllerBase
 {
-    private readonly AppDbContext _context;
-    private readonly IBookRepository _repository;
-    public BooksController(AppDbContext context, IBookRepository repository)
+    private readonly IBooksService _service;
+
+    public BooksController(AppDbContext context, IBooksRepository repository, IBooksService service)
     {
-        _context = context;
-        _repository = repository;
+        _service = service;
     }
 
-    // GET: <BooksController>
+    // GET: api/Books
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<BookGetResponseDto>>> GetBooks(CancellationToken ct)
+    public async Task<ActionResult<IEnumerable<BookResponseDTO>>> GetBooks(CancellationToken ct)
     {
-        var books = await _repository.GetAllAsync(ct);
+        var serviceResult = await _service.GetAllBooksAsync(ct);
 
-        if (books.Count() == 0)
-            return Problem("There are no books", statusCode: 404);
+        if (!serviceResult.Success)
+        {
+            return serviceResult.ErrorCode switch
+            {
+                ServiceErrorCode.NotFound => Problem(serviceResult.ErrorMessage, statusCode: 404),
+                _ => Problem("Internal Error", statusCode: 500)
+            };
+        }
 
-        return Ok(books.Select(b => b.MapToDto()));
+        return Ok(serviceResult.Data);
     }
 
-    // GET <BooksController>/5
+    // GET api/Books/5
     [HttpGet("{id}")]
     public async Task<ActionResult<Book>> GetBook(int id, CancellationToken ct)
     {
-        var book = await _repository.GetByIdAsync(id, ct);
+        var serviceResult = await _service.GetBookByIdAsync(id, ct);
 
-        if (book == null)
-            return Problem($"There is no book wiht Id: {id}", statusCode: 404);
+        if (!serviceResult.Success)
+        {
+            return serviceResult.ErrorCode switch
+            {
+                ServiceErrorCode.NotFound => Problem(serviceResult.ErrorMessage, statusCode: 404),
+                _ => Problem("Internal Error", statusCode: 500)
+            };
+        }
 
-        return Ok(book.MapToDto());
+        return Ok(serviceResult.Data);
     }
 
-    // POST <BooksController>
+    // POST api/Books
     [HttpPost]
     public async Task<ActionResult> Post([FromBody] BookPostRequestDto requestDto, CancellationToken ct)
     {
-        var value = requestDto.MapToEntity();
-        if (value == null)
-            return BadRequest("No Book data provided.");
+        var serviceResult = await _service.CreateBookAsync(requestDto, ct);
 
-        await _repository.InsertAsync(value, ct);
+        if (!serviceResult.Success)
+        {
+            return serviceResult.ErrorCode switch
+            {
+                ServiceErrorCode.ValidationError => Problem(serviceResult.ErrorMessage, statusCode: 400),
+                _ => Problem("Internal Error", statusCode: 500)
+            };
+        }
 
-        return CreatedAtAction(nameof(GetBook), new { id = value.BookId }, value);
+        return CreatedAtAction(nameof(GetBook), new { id = serviceResult.Data.BookId }, serviceResult.Data);
     }
 
-    // PUT <BooksController>/5
+    // PUT api/Books/5
     [HttpPut("{id}")]
     public async Task<ActionResult> Put(int id, [FromBody] BookPutRequestDto requestDto, CancellationToken ct)
     {
-        var value = requestDto.MapToEntity();
-        if (value == null)
-            return BadRequest("No Book data provided.");
+        var serviceResult = await _service.UpdateBookAsync(id, requestDto, ct);
 
-        if (id != value.BookId)
-            return BadRequest("Id isn't the same.");
-
-        var book = await _context.Books.FindAsync([id], cancellationToken: ct);
-        if (book == null)
-            return Problem($"There is no book with Id: {id}", statusCode: 404);
-
-        await _repository.UpdateAsync(value, ct);
+        if (!serviceResult.Success)
+        {
+            return serviceResult.ErrorCode switch
+            {
+                ServiceErrorCode.ValidationError => Problem(serviceResult.ErrorMessage, statusCode: 422),
+                _ => Problem("Internal Error", statusCode: 500)
+            };
+        }
 
         return NoContent();
     }
 
-    // DELETE <BooksController>/5
+    // DELETE api/Books/5
     [HttpDelete("{id}")]
     public async Task<ActionResult> Delete(int id, CancellationToken ct)
     {
-        var book = await _context.Books.FindAsync([id], cancellationToken: ct);
-        if (book == null)
-            return Problem($"There is no book with Id: {id}", statusCode: 404);
+        var serviceResult = await _service.DeleteBookAsync(id, ct);
 
-        await _repository.DeleteAsync(book, ct);
+        if (!serviceResult.Success)
+        {
+            return serviceResult.ErrorCode switch
+            {
+                ServiceErrorCode.NotFound => Problem(serviceResult.ErrorMessage, statusCode: 404),
+                _ => Problem("Internal Error", statusCode: 500)
+            };
+        }
 
         return NoContent();
     }

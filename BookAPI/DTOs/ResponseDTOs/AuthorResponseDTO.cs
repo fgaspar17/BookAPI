@@ -4,7 +4,7 @@ using Newtonsoft.Json;
 
 namespace BookAPI.DTOs.ResponseDTOs;
 
-public class AuthorGetResponseDto
+public class AuthorResponseDTO
 {
     [Key]
     public int AuthorId { get; set; }
