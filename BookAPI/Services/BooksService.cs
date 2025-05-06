@@ -1,11 +1,11 @@
-﻿using BookAPI.DTOs.RequestDTOs;
+﻿using System.Linq.Expressions;
+using BookAPI.DTOs.RequestDTOs;
 using BookAPI.DTOs.ResponseDTOs;
 using BookAPI.Mappers;
 using BookAPI.Models;
 using BookAPI.Repositories;
 using BookAPI.Services.Result;
 using Microsoft.EntityFrameworkCore;
-using NuGet.Protocol.Core.Types;
 
 namespace BookAPI.Services;
 
@@ -40,15 +40,36 @@ public class BooksService : IBooksService
         return ResultService<BookResponseDTO>.Ok(data: null);
     }
 
-    public async Task<ResultService<IEnumerable<BookResponseDTO>>> GetAllBooksAsync(CancellationToken ct)
+    public async Task<ResultService<PagedList<BookResponseDTO>>> GetAllBooksAsync(GetAllQueryParameters parameters, CancellationToken ct)
     {
-        var books = await _repository.GetAllAsync(ct);
+        var query = _repository.GetAllQuery();
 
-        if (!books.Any())
-            return ResultService<IEnumerable<BookResponseDTO>>.Fail("There are no books",
+        // Filtering
+        if (!string.IsNullOrEmpty(parameters.Filter))
+        {
+            query = query
+                .Where(b => EF.Functions.Like(b.Title, $"%{parameters.Filter}%"));
+        }
+
+        // Sortering
+        if (parameters.SortDirection.ToLower() == "desc")
+            query = query
+                .OrderByDescending(GetSortProperty(parameters.SortColumn));
+        else
+            query = query
+                .OrderBy(GetSortProperty(parameters.SortColumn));
+
+        // Mapping to DTO
+        var queryDto = query.Select(b => b.MapToDto());
+
+        // Pagination
+        var pagedBooks = await PagedList<BookResponseDTO>.CreateAsync(queryDto, parameters.PageIndex, parameters.PageSize, ct);
+
+        if (pagedBooks.Data.Count == 0)
+            return ResultService<PagedList<BookResponseDTO>>.Fail("There are no books",
                 ServiceErrorCode.NotFound);
 
-        return ResultService<IEnumerable<BookResponseDTO>>.Ok(books.Select(b => b.MapToDto())!);
+        return ResultService<PagedList<BookResponseDTO>>.Ok(pagedBooks!);
     }
 
     public async Task<ResultService<BookResponseDTO>> GetBookByIdAsync(int id, CancellationToken ct)
@@ -79,5 +100,16 @@ public class BooksService : IBooksService
         var updated = await _repository.GetByIdAsync(value.BookId, ct);
 
         return ResultService<BookResponseDTO>.Ok(updated.MapToDto());
+    }
+
+    private Expression<Func<Book, object>> GetSortProperty(string sortColumn)
+    {
+        return sortColumn.ToLower() switch
+        {
+            "publicationdate" => book => book.PublicationDate,
+            "pages" => book => book.Pages,
+            "title" => book => book.Title,
+            _ => book => book.BookId
+        };
     }
 }

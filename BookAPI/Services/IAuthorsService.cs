@@ -7,7 +7,7 @@ namespace BookAPI.Services;
 
 public interface IAuthorsService
 {
-    Task<ResultService<IEnumerable<AuthorResponseDTO>>> GetAllAuthorsAsync(CancellationToken ct);
+    Task<ResultService<PagedList<AuthorResponseDTO>>> GetAllAuthorsAsync(GetAllQueryParameters parameters, CancellationToken ct);
     Task<ResultService<AuthorResponseDTO>> GetAuthorByIdAsync(int authorId, CancellationToken ct);
     Task<ResultService<AuthorResponseDTO>> CreateAuthorAsync(AuthorPostRequestDto requestDto, CancellationToken ct);
     Task<ResultService<AuthorResponseDTO>> UpdateAuthorAsync(int authorId, AuthorPutRequestDto requestDto, CancellationToken ct);

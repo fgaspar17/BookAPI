@@ -1,8 +1,11 @@
-﻿using BookAPI.DTOs.RequestDTOs;
+﻿using System.Linq.Expressions;
+using BookAPI.DTOs.RequestDTOs;
 using BookAPI.DTOs.ResponseDTOs;
 using BookAPI.Mappers;
+using BookAPI.Models;
 using BookAPI.Repositories;
 using BookAPI.Services.Result;
+using Microsoft.EntityFrameworkCore;
 
 namespace BookAPI.Services;
 
@@ -37,14 +40,36 @@ public class AuthorsService : IAuthorsService
         return ResultService<AuthorResponseDTO>.Ok(data: null);
     }
 
-    public async Task<ResultService<IEnumerable<AuthorResponseDTO>>> GetAllAuthorsAsync(CancellationToken ct)
+    public async Task<ResultService<PagedList<AuthorResponseDTO>>> GetAllAuthorsAsync(GetAllQueryParameters parameters, CancellationToken ct)
     {
-        var authors = await _repository.GetAllAsync(ct);
-        if (!authors.Any())
-            return ResultService<IEnumerable<AuthorResponseDTO>>.Fail("There are no authors",
+        var query = _repository.GetAllQuery();
+
+        // Filtering
+        if (!string.IsNullOrEmpty(parameters.Filter))
+        {
+            query = query
+                .Where(a => EF.Functions.Like(a.FirstName, $"%{parameters.Filter}%"));
+        }
+
+        // Sortering
+        if (parameters.SortDirection.ToLower() == "desc")
+            query = query
+                .OrderByDescending(GetSortProperty(parameters.SortColumn));
+        else
+            query = query
+                .OrderBy(GetSortProperty(parameters.SortColumn));
+
+        // Mapping to DTO
+        var queryDto = query.Select(a => a.MapToDto());
+
+        // Pagination
+        var pagedAuthors = await PagedList<AuthorResponseDTO>.CreateAsync(queryDto, parameters.PageIndex, parameters.PageSize, ct);
+
+        if (pagedAuthors.Data.Count == 0)
+            return ResultService<PagedList<AuthorResponseDTO>>.Fail("There are no authors",
                 ServiceErrorCode.NotFound);
 
-        return ResultService<IEnumerable<AuthorResponseDTO>>.Ok(authors.Select(author => author.MapToDto())!);
+        return ResultService<PagedList<AuthorResponseDTO>>.Ok(pagedAuthors);
     }
 
     public async Task<ResultService<AuthorResponseDTO>> GetAuthorByIdAsync(int authorId, CancellationToken ct)
@@ -74,5 +99,16 @@ public class AuthorsService : IAuthorsService
         var updated = await _repository.GetByIdAsync(value.AuthorId, ct);
 
         return ResultService<AuthorResponseDTO>.Ok(updated.MapToDto());
+    }
+
+    private Expression<Func<Author, object>> GetSortProperty(string sortColumn)
+    {
+        return sortColumn.ToLower() switch
+        {
+            "firstname" => author => author.FirstName,
+            "lastname" => author => author.LastName,
+            "birthday" => author => author.Birthday,
+            _ => author => author.AuthorId
+        };
     }
 }

@@ -17,13 +17,12 @@ public class AuthorsRepository : IAuthorsRepository
         await _context.SaveChangesAsync(cancellationToken: ct);
     }
 
-    public async Task<IEnumerable<Author>> GetAllAsync(CancellationToken ct)
+    public IQueryable<Author> GetAllQuery()
     {
-        return await _context.Authors
+        return _context.Authors
             .AsNoTracking()
             .Include(author => author.AuthorBooks)
-                .ThenInclude(ab => ab.Book)
-            .ToListAsync(cancellationToken: ct);
+                .ThenInclude(ab => ab.Book);
     }
 
     public async Task<Author?> GetByIdAsync(int id, CancellationToken ct)

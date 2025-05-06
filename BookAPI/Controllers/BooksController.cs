@@ -23,9 +23,10 @@ public class BooksController : ControllerBase
 
     // GET: api/Books
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<BookResponseDTO>>> GetBooks(CancellationToken ct)
+    public async Task<ActionResult<PagedList<BookResponseDTO>>> GetBooks([FromQuery] GetAllQueryParameters parameters, 
+        CancellationToken ct)
     {
-        var serviceResult = await _service.GetAllBooksAsync(ct);
+        var serviceResult = await _service.GetAllBooksAsync(parameters, ct);
 
         if (!serviceResult.Success)
         {

@@ -21,9 +21,10 @@ public class AuthorsController : ControllerBase
 
     // GET: api/Authors
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<AuthorResponseDTO>>> GetAuthors(CancellationToken ct)
+    public async Task<ActionResult<PagedList<AuthorResponseDTO>>> GetAuthors([FromQuery] GetAllQueryParameters parameters, 
+        CancellationToken ct)
     {
-        var serviceResult = await _service.GetAllAuthorsAsync(ct);
+        var serviceResult = await _service.GetAllAuthorsAsync(parameters, ct);
 
         if (!serviceResult.Success)
         {

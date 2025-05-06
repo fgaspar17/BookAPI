@@ -11,13 +11,12 @@ public class BooksRepository : IBooksRepository
         _context = context;
     }
 
-    public async Task<IEnumerable<Book>> GetAllAsync(CancellationToken ct)
+    public IQueryable<Book> GetAllQuery()
     {
-        return await _context.Books
+        return _context.Books
             .AsNoTracking()
             .Include(ab => ab.BookAuthors)
-                .ThenInclude(a => a.Author)
-            .ToListAsync(cancellationToken: ct);
+                .ThenInclude(a => a.Author);
     }
 
     public async Task<Book?> GetByIdAsync(int id, CancellationToken ct)
