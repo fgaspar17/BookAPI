@@ -5,6 +5,8 @@ using BookAPI.Mappers;
 using BookAPI.Models;
 using BookAPI.Repositories;
 using BookAPI.Services.Result;
+using BookAPI.Validators;
+using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 
 namespace BookAPI.Services;
@@ -12,14 +14,25 @@ namespace BookAPI.Services;
 public class AuthorsService : IAuthorsService
 {
     private readonly IAuthorsRepository _repository;
+    private readonly IValidator<AuthorPostRequestDto> _postValidator;
+    private readonly IValidator<AuthorPutRequestDto> _putValidator;
+    private readonly AuthorQueryParametersValidator _queryParamsValidator;
 
-    public AuthorsService(IAuthorsRepository repository)
+    public AuthorsService(IAuthorsRepository repository, IValidator<AuthorPostRequestDto> postValidator,
+        IValidator<AuthorPutRequestDto> putValidator, AuthorQueryParametersValidator queryParamsValidator)
     {
         _repository = repository;
+        _postValidator = postValidator;
+        _putValidator = putValidator;
+        _queryParamsValidator = queryParamsValidator;
     }
 
     public async Task<ResultService<AuthorResponseDTO>> CreateAuthorAsync(AuthorPostRequestDto requestDto, CancellationToken ct)
     {
+        var validationResult = _postValidator.Validate(requestDto);
+        if (!validationResult.IsValid)
+            return ResultService<AuthorResponseDTO>.FluentValidationFail(validationResult.Errors);
+
         var value = requestDto.MapToEntity();
 
         await _repository.InsertAsync(value, ct);
@@ -42,6 +55,10 @@ public class AuthorsService : IAuthorsService
 
     public async Task<ResultService<PagedList<AuthorResponseDTO>>> GetAllAuthorsAsync(GetAllQueryParameters parameters, CancellationToken ct)
     {
+        var validationResult = _queryParamsValidator.Validate(parameters);
+        if (!validationResult.IsValid)
+            return ResultService<PagedList<AuthorResponseDTO>>.FluentValidationFail(validationResult.Errors);
+
         var query = _repository.GetAllQuery();
 
         // Filtering
@@ -84,6 +101,10 @@ public class AuthorsService : IAuthorsService
 
     public async Task<ResultService<AuthorResponseDTO>> UpdateAuthorAsync(int authorId, AuthorPutRequestDto requestDto, CancellationToken ct)
     {
+        var validationResult = _putValidator.Validate(requestDto);
+        if (!validationResult.IsValid)
+            return ResultService<AuthorResponseDTO>.FluentValidationFail(validationResult.Errors);
+
         var value = requestDto.MapToEntity();
 
         if (authorId != value.AuthorId)
@@ -101,9 +122,9 @@ public class AuthorsService : IAuthorsService
         return ResultService<AuthorResponseDTO>.Ok(updated.MapToDto());
     }
 
-    private Expression<Func<Author, object>> GetSortProperty(string sortColumn)
+    private Expression<Func<Author, object>> GetSortProperty(string? sortColumn)
     {
-        return sortColumn.ToLower() switch
+        return sortColumn?.ToLower() switch
         {
             "firstname" => author => author.FirstName,
             "lastname" => author => author.LastName,

@@ -5,6 +5,8 @@ using BookAPI.Mappers;
 using BookAPI.Models;
 using BookAPI.Repositories;
 using BookAPI.Services.Result;
+using BookAPI.Validators;
+using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 
 namespace BookAPI.Services;
@@ -12,13 +14,24 @@ namespace BookAPI.Services;
 public class BooksService : IBooksService
 {
     private readonly IBooksRepository _repository;
+    private readonly IValidator<BookPostRequestDto> _postValidator;
+    private readonly IValidator<BookPutRequestDto> _putValidator;
+    private readonly BookQueryParametersValidator _queryParamsValidator;
 
-    public BooksService(IBooksRepository repository)
+    public BooksService(IBooksRepository repository, IValidator<BookPostRequestDto> postValidator, 
+        IValidator<BookPutRequestDto> putValidator, BookQueryParametersValidator queryParamsValidator)
     {
         _repository = repository;
+        _postValidator = postValidator;
+        _putValidator = putValidator;
+        _queryParamsValidator = queryParamsValidator;
     }
     public async Task<ResultService<BookResponseDTO>> CreateBookAsync(BookPostRequestDto requestDto, CancellationToken ct)
     {
+        var validationResult = _postValidator.Validate(requestDto);
+        if (!validationResult.IsValid)
+            return ResultService<BookResponseDTO>.FluentValidationFail(validationResult.Errors);
+
         var value = requestDto.MapToEntity();
 
         await _repository.InsertAsync(value, ct);
@@ -42,6 +55,10 @@ public class BooksService : IBooksService
 
     public async Task<ResultService<PagedList<BookResponseDTO>>> GetAllBooksAsync(GetAllQueryParameters parameters, CancellationToken ct)
     {
+        var validationResult = _queryParamsValidator.Validate(parameters);
+        if (!validationResult.IsValid)
+            return ResultService<PagedList<BookResponseDTO>>.FluentValidationFail(validationResult.Errors);
+
         var query = _repository.GetAllQuery();
 
         // Filtering
@@ -84,6 +101,10 @@ public class BooksService : IBooksService
 
     public async Task<ResultService<BookResponseDTO>> UpdateBookAsync(int bookId, BookPutRequestDto requestDto, CancellationToken ct)
     {
+        var validationResult = _putValidator.Validate(requestDto);
+        if (!validationResult.IsValid)
+            return ResultService<BookResponseDTO>.FluentValidationFail(validationResult.Errors);
+
         var value = requestDto.MapToEntity();
 
         if (bookId != value.BookId)
@@ -102,9 +123,9 @@ public class BooksService : IBooksService
         return ResultService<BookResponseDTO>.Ok(updated.MapToDto());
     }
 
-    private Expression<Func<Book, object>> GetSortProperty(string sortColumn)
+    private Expression<Func<Book, object>> GetSortProperty(string? sortColumn)
     {
-        return sortColumn.ToLower() switch
+        return sortColumn?.ToLower() switch
         {
             "publicationdate" => book => book.PublicationDate,
             "pages" => book => book.Pages,

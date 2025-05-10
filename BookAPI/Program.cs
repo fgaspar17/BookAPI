@@ -1,6 +1,9 @@
+using BookAPI.DTOs.RequestDTOs;
 using BookAPI.Models;
 using BookAPI.Repositories;
 using BookAPI.Services;
+using BookAPI.Validators;
+using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 using Scalar.AspNetCore;
 
@@ -18,6 +21,14 @@ builder.Services.AddTransient<IAuthorBooksRepository, AuthorBooksRepository>();
 builder.Services.AddTransient<IAuthorsService, AuthorsService>();
 builder.Services.AddTransient<IBooksService, BooksService>();
 builder.Services.AddTransient<IAuthorBooksService, AuthorBooksService>();
+
+builder.Services.AddScoped<IValidator<AuthorPostRequestDto>, AuthorPostRequestDtoValidator>();
+builder.Services.AddScoped<IValidator<AuthorPutRequestDto>, AuthorPutRequestDtoValidator>();
+builder.Services.AddScoped<IValidator<BookPostRequestDto>, BookPostRequestDtoValidator>();
+builder.Services.AddScoped<IValidator<BookPutRequestDto>, BookPutRequestDtoValidator>();
+builder.Services.AddScoped<IValidator<AuthorBookPostRequestDto>, AuthorBookPostRequestDtoValidator>();
+builder.Services.AddScoped<AuthorQueryParametersValidator>();
+builder.Services.AddScoped<BookQueryParametersValidator>();
 
 builder.Services.AddControllers();
 

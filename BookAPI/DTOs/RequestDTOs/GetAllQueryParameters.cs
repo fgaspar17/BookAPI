@@ -9,6 +9,6 @@ public class GetAllQueryParameters
     public int PageSize { get; set; } = 10;
 
     // Sorting
-    public string SortColumn { get; set; } = "Id"; // or any default column
+    public string? SortColumn { get; set; }
     public string SortDirection { get; set; } = "ASC"; // ASC or DESC
 }

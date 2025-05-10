@@ -30,6 +30,7 @@ public class AuthorsController : ControllerBase
         {
             return serviceResult.ErrorCode switch
             {
+                ServiceErrorCode.FluentValidationError => BadRequest(serviceResult.FluentValidationErrors.Select(e => new { e.PropertyName, e.ErrorMessage })),
                 ServiceErrorCode.NotFound => Problem(serviceResult.ErrorMessage, statusCode: 404),
                 _ => Problem("Internal Error", statusCode: 500)
             };
@@ -66,6 +67,7 @@ public class AuthorsController : ControllerBase
         {
             return serviceResult.ErrorCode switch
             {
+                ServiceErrorCode.FluentValidationError => BadRequest(serviceResult.FluentValidationErrors.Select(e => new { e.PropertyName, e.ErrorMessage})),
                 ServiceErrorCode.ValidationError => Problem(serviceResult.ErrorMessage, statusCode: 400),
                 _ => Problem("Internal Error", statusCode: 500)
             };
@@ -84,6 +86,7 @@ public class AuthorsController : ControllerBase
         {
             return serviceResult.ErrorCode switch
             {
+                ServiceErrorCode.FluentValidationError => BadRequest(serviceResult.FluentValidationErrors.Select(e => new { e.PropertyName, e.ErrorMessage })),
                 ServiceErrorCode.ValidationError => Problem(serviceResult.ErrorMessage, statusCode: 422),
                 _ => Problem("Internal Error", statusCode: 500)
             };
