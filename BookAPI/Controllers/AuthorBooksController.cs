@@ -1,14 +1,17 @@
-﻿using BookAPI.DTOs.RequestDTOs;
+﻿using BookAPI.Constants;
+using BookAPI.DTOs.RequestDTOs;
 using BookAPI.Models;
 using BookAPI.Repositories;
 using BookAPI.Services;
 using BookAPI.Services.Result;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace BookAPI.Controllers;
 
 [Route("api/[controller]")]
 [ApiController]
+[Authorize(Roles = RoleNames.Administrator)]
 public class AuthorBooksController : ControllerBase
 {
     private readonly IAuthorBooksService _service;

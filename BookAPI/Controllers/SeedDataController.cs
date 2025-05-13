@@ -1,25 +1,34 @@
-﻿using BookAPI.Models;
+﻿using BookAPI.Constants;
+using BookAPI.Models;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Hosting;
 
 // For more information on enabling Web API for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
 
 namespace BookAPI.Controllers;
 
-[Route("api/[controller]")]
+[Route("api/[controller]/[action]")]
 [ApiController]
+[Authorize(Roles = RoleNames.Administrator)]
 public class SeedDataController : ControllerBase
 {
     private readonly AppDbContext _context;
+    private readonly RoleManager<IdentityRole> _roleManager;
+    private readonly UserManager<User> _userManager;
 
-    public SeedDataController(AppDbContext context)
+    public SeedDataController(AppDbContext context, RoleManager<IdentityRole> roleManager, UserManager<User> userManager)
     {
         _context = context;
+        _roleManager = roleManager;
+        _userManager = userManager;
     }
 
 
     // POST api/<SeedDataController>/5
-    [HttpPost("seed")]
-    public async Task<ActionResult> Post(CancellationToken ct)
+    [HttpPost]
+    public async Task<ActionResult> Data(CancellationToken ct)
     {
         if (_context.Books.Any() || _context.Authors.Any())
             return BadRequest("Database contains data");
@@ -84,6 +93,39 @@ public class SeedDataController : ControllerBase
 
         await _context.SaveChangesAsync(cancellationToken: ct);
 
-        return Ok("Database seeded successfully");
+        return Ok("Database seeded successfully.");
+    }
+
+    [HttpPost]
+    public async Task<ActionResult> AuthData(CancellationToken ct)
+    {
+
+        if (!await _roleManager.RoleExistsAsync(RoleNames.Administrator))
+        {
+            var role = new IdentityRole(RoleNames.Administrator);
+            await _roleManager.CreateAsync(role);
+        }
+        else
+        {
+            return BadRequest("Roles have been already created.");
+        }
+
+        return Ok("Roles seeded successfully.");
+    }
+
+    [HttpPatch]
+    public async Task<ActionResult> AssignRole(string userName, string roleName, CancellationToken ct)
+    {
+        var user = await _userManager.FindByNameAsync(userName);
+        if (await _roleManager.RoleExistsAsync(roleName) && user != null)
+        {
+            await _userManager.AddToRoleAsync(user, roleName);
+        }
+        else
+        {
+            return BadRequest("The User or the Role doesn't exist.");
+        }
+
+        return Ok("Roles assigned successfully. Authorize this endpoint");
     }
 }

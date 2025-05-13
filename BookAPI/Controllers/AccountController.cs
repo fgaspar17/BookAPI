@@ -18,16 +18,15 @@ namespace BookAPI.Controllers
         private readonly IConfiguration _configuration;
 
         private readonly UserManager<User> _userManager;
-        private readonly SignInManager<User> _signInManager;
+
         public AccountController(
             AppDbContext context,
             IConfiguration configuration,
-            UserManager<User> userManager, SignInManager<User> signInManager)
+            UserManager<User> userManager)
         {
             _context = context;
             _configuration = configuration;
             _userManager = userManager;
-            _signInManager = signInManager;
         }
 
         [HttpPost]
@@ -86,11 +85,15 @@ namespace BookAPI.Controllers
                     if (user == null || !await _userManager.CheckPasswordAsync(user, input.Password))
                         throw new Exception("Invalid login attempt.");
 
+                    var roles = await _userManager.GetRolesAsync(user);
+                    var roleClaims = roles.Select(r => new Claim(ClaimTypes.Role, r));
+
                     var signingCredentials = new SigningCredentials(new SymmetricSecurityKey(
                         System.Text.Encoding.UTF8.GetBytes(
                         _configuration["JWT:SigningKey"])), SecurityAlgorithms.HmacSha256);
 
-                    Claim[] claims = [ new Claim(ClaimTypes.Name, user.UserName) ];
+                    List<Claim> claims = [ new Claim(ClaimTypes.Name, user.UserName)];
+                    claims.AddRange(roleClaims);
 
                     var jwtToken = new JwtSecurityToken(
                             issuer: _configuration["JWT:Issuer"],
@@ -102,7 +105,7 @@ namespace BookAPI.Controllers
                     var jwtString = new JwtSecurityTokenHandler()
                         .WriteToken(jwtToken);
 
-                    return Ok(jwtString);
+                    return Ok(new { Token = jwtString });
                 }
 
                 else

@@ -1,9 +1,11 @@
-﻿using BookAPI.DTOs.RequestDTOs;
+﻿using BookAPI.Constants;
+using BookAPI.DTOs.RequestDTOs;
 using BookAPI.DTOs.ResponseDTOs;
 using BookAPI.Models;
 using BookAPI.Repositories;
 using BookAPI.Services;
 using BookAPI.Services.Result;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 // For more information on enabling Web API for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
@@ -12,6 +14,7 @@ namespace BookAPI.Controllers;
 
 [Route("api/[controller]")]
 [ApiController]
+[Authorize(Roles = RoleNames.Administrator)]
 public class BooksController : ControllerBase
 {
     private readonly IBooksService _service;
@@ -23,6 +26,7 @@ public class BooksController : ControllerBase
 
     // GET: api/Books
     [HttpGet]
+    [AllowAnonymous]
     public async Task<ActionResult<PagedList<BookResponseDTO>>> GetBooks([FromQuery] GetAllQueryParameters parameters, 
         CancellationToken ct)
     {
@@ -43,6 +47,7 @@ public class BooksController : ControllerBase
 
     // GET api/Books/5
     [HttpGet("{id}")]
+    [AllowAnonymous]
     public async Task<ActionResult<Book>> GetBook(int id, CancellationToken ct)
     {
         var serviceResult = await _service.GetBookByIdAsync(id, ct);

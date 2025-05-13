@@ -1,15 +1,18 @@
-﻿using BookAPI.DTOs.RequestDTOs;
+﻿using BookAPI.Constants;
+using BookAPI.DTOs.RequestDTOs;
 using BookAPI.DTOs.ResponseDTOs;
 using BookAPI.Models;
 using BookAPI.Repositories;
 using BookAPI.Services;
 using BookAPI.Services.Result;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace BookAPI.Controllers;
 
 [Route("api/[controller]")]
 [ApiController]
+[Authorize(Roles = RoleNames.Administrator)]
 public class AuthorsController : ControllerBase
 {
     private readonly IAuthorsService _service;
@@ -21,6 +24,7 @@ public class AuthorsController : ControllerBase
 
     // GET: api/Authors
     [HttpGet]
+    [AllowAnonymous]
     public async Task<ActionResult<PagedList<AuthorResponseDTO>>> GetAuthors([FromQuery] GetAllQueryParameters parameters, 
         CancellationToken ct)
     {
@@ -41,6 +45,7 @@ public class AuthorsController : ControllerBase
 
     // GET: api/Authors/5
     [HttpGet("{id}")]
+    [AllowAnonymous]
     public async Task<ActionResult<AuthorResponseDTO>> GetAuthor(int id, CancellationToken ct)
     {
         var serviceResult = await _service.GetAuthorByIdAsync(id, ct);
