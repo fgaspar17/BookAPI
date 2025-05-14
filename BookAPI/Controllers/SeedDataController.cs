@@ -17,12 +17,15 @@ public class SeedDataController : ControllerBase
     private readonly AppDbContext _context;
     private readonly RoleManager<IdentityRole> _roleManager;
     private readonly UserManager<User> _userManager;
+    private readonly ILogger<SeedDataController> _logger;
 
-    public SeedDataController(AppDbContext context, RoleManager<IdentityRole> roleManager, UserManager<User> userManager)
+    public SeedDataController(AppDbContext context, RoleManager<IdentityRole> roleManager, UserManager<User> userManager,
+        ILogger<SeedDataController> logger)
     {
         _context = context;
         _roleManager = roleManager;
         _userManager = userManager;
+        _logger = logger;
     }
 
 
@@ -31,7 +34,10 @@ public class SeedDataController : ControllerBase
     public async Task<ActionResult> Data(CancellationToken ct)
     {
         if (_context.Books.Any() || _context.Authors.Any())
+        {
+            _logger.LogWarning("Database seeding aborted: database already contains data.");
             return BadRequest("Database contains data");
+        }
 
         var books = new List<Book>();
 
@@ -93,6 +99,7 @@ public class SeedDataController : ControllerBase
 
         await _context.SaveChangesAsync(cancellationToken: ct);
 
+        _logger.LogInformation("Seeded {bookCount} books, {authorCount} authors, and {linkCount} author-book relations.", books.Count, authors.Count, authorBooks.Count);
         return Ok("Database seeded successfully.");
     }
 
@@ -107,9 +114,11 @@ public class SeedDataController : ControllerBase
         }
         else
         {
+            _logger.LogWarning("Role '{roleName}' already exists. Skipping creation.", RoleNames.Administrator);
             return BadRequest("Roles have been already created.");
         }
 
+        _logger.LogInformation("Role '{roleName}' created successfully.", RoleNames.Administrator);
         return Ok("Roles seeded successfully.");
     }
 
@@ -123,9 +132,11 @@ public class SeedDataController : ControllerBase
         }
         else
         {
+            _logger.LogWarning("The User: {userName} or the Role: {roleName} don't exist.", userName, roleName);
             return BadRequest("The User or the Role doesn't exist.");
         }
 
+        _logger.LogInformation("Roles assigned successfully.");
         return Ok("Roles assigned successfully. Authorize this endpoint");
     }
 }

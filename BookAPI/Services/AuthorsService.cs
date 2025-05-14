@@ -1,4 +1,5 @@
 ﻿using System.Linq.Expressions;
+using System.Net;
 using BookAPI.DTOs.RequestDTOs;
 using BookAPI.DTOs.ResponseDTOs;
 using BookAPI.Mappers;
@@ -17,21 +18,28 @@ public class AuthorsService : IAuthorsService
     private readonly IValidator<AuthorPostRequestDto> _postValidator;
     private readonly IValidator<AuthorPutRequestDto> _putValidator;
     private readonly AuthorQueryParametersValidator _queryParamsValidator;
+    private readonly ILogger<AuthorsService> _logger;
 
     public AuthorsService(IAuthorsRepository repository, IValidator<AuthorPostRequestDto> postValidator,
-        IValidator<AuthorPutRequestDto> putValidator, AuthorQueryParametersValidator queryParamsValidator)
+        IValidator<AuthorPutRequestDto> putValidator, AuthorQueryParametersValidator queryParamsValidator,
+        ILogger<AuthorsService> logger)
     {
         _repository = repository;
         _postValidator = postValidator;
         _putValidator = putValidator;
         _queryParamsValidator = queryParamsValidator;
+        _logger = logger;
     }
 
     public async Task<ResultService<AuthorResponseDTO>> CreateAuthorAsync(AuthorPostRequestDto requestDto, CancellationToken ct)
     {
         var validationResult = _postValidator.Validate(requestDto);
         if (!validationResult.IsValid)
+        {
+            _logger.LogWarning("Validation Error: {Errors}",
+                string.Join(", ", validationResult.Errors.Select(e => e.ErrorMessage)));
             return ResultService<AuthorResponseDTO>.FluentValidationFail(validationResult.Errors);
+        }
 
         var value = requestDto.MapToEntity();
 
@@ -45,8 +53,12 @@ public class AuthorsService : IAuthorsService
     {
         var author = await _repository.GetByIdAsync(authorId, ct);
         if (author == null)
+        {
+            _logger.LogWarning("Attemptt to delete the author with Id: {authorId} which doesn't exist",
+                authorId);
             return ResultService<AuthorResponseDTO>.Fail($"There is no author with Id: {authorId}",
                 ServiceErrorCode.NotFound);
+        }
 
         await _repository.DeleteAsync(author, ct);
 
@@ -57,7 +69,11 @@ public class AuthorsService : IAuthorsService
     {
         var validationResult = _queryParamsValidator.Validate(parameters);
         if (!validationResult.IsValid)
+        {
+            _logger.LogWarning("Validation Error: {Errors}",
+                string.Join(", ", validationResult.Errors.Select(e => e.ErrorMessage)));
             return ResultService<PagedList<AuthorResponseDTO>>.FluentValidationFail(validationResult.Errors);
+        }
 
         var query = _repository.GetAllQuery();
 
@@ -83,8 +99,11 @@ public class AuthorsService : IAuthorsService
         var pagedAuthors = await PagedList<AuthorResponseDTO>.CreateAsync(queryDto, parameters.PageIndex, parameters.PageSize, ct);
 
         if (pagedAuthors.Data.Count == 0)
+        {
+            _logger.LogInformation("There are no authors");
             return ResultService<PagedList<AuthorResponseDTO>>.Fail("There are no authors",
                 ServiceErrorCode.NotFound);
+        }
 
         return ResultService<PagedList<AuthorResponseDTO>>.Ok(pagedAuthors);
     }
@@ -93,8 +112,12 @@ public class AuthorsService : IAuthorsService
     {
         var author = await _repository.GetByIdAsync(authorId, ct);
         if (author == null)
-            return ResultService<AuthorResponseDTO>.Fail($"There is no author wiht Id: {authorId}",
+        {
+            _logger.LogWarning("Attempt to get the author with Id: {authorId} which doesn't exist",
+                authorId);
+            return ResultService<AuthorResponseDTO>.Fail($"There is no author with Id: {authorId}",
                 ServiceErrorCode.NotFound);
+        }
 
         return ResultService<AuthorResponseDTO>.Ok(author.MapToDto()!);
     }
@@ -103,18 +126,29 @@ public class AuthorsService : IAuthorsService
     {
         var validationResult = _putValidator.Validate(requestDto);
         if (!validationResult.IsValid)
+        {
+            _logger.LogWarning("Validation Error: {Errors}",
+                string.Join(", ", validationResult.Errors.Select(e => e.ErrorMessage)));
             return ResultService<AuthorResponseDTO>.FluentValidationFail(validationResult.Errors);
+        }
 
         var value = requestDto.MapToEntity();
 
         if (authorId != value.AuthorId)
+        {
+            _logger.LogWarning("Request ID does not match entity ID.");
             return ResultService<AuthorResponseDTO>.Fail("Request ID does not match entity ID.",
                 ServiceErrorCode.ValidationError);
+        }
 
         var author = await _repository.GetByIdAsync(authorId, ct);
         if (author == null)
-            return ResultService<AuthorResponseDTO>.Fail($"There is no author wiht Id: {authorId}",
+        {
+            _logger.LogWarning("Attempt to update the author with Id: {authorId} which doesn't exist",
+                authorId);
+            return ResultService<AuthorResponseDTO>.Fail($"There is no author with Id: {authorId}",
                 ServiceErrorCode.NotFound);
+        }
 
         await _repository.UpdateAsync(value, ct);
         var updated = await _repository.GetByIdAsync(value.AuthorId, ct);

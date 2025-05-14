@@ -17,20 +17,27 @@ public class BooksService : IBooksService
     private readonly IValidator<BookPostRequestDto> _postValidator;
     private readonly IValidator<BookPutRequestDto> _putValidator;
     private readonly BookQueryParametersValidator _queryParamsValidator;
+    private readonly ILogger<BooksService> _logger;
 
-    public BooksService(IBooksRepository repository, IValidator<BookPostRequestDto> postValidator, 
-        IValidator<BookPutRequestDto> putValidator, BookQueryParametersValidator queryParamsValidator)
+    public BooksService(IBooksRepository repository, IValidator<BookPostRequestDto> postValidator,
+        IValidator<BookPutRequestDto> putValidator, BookQueryParametersValidator queryParamsValidator,
+        ILogger<BooksService> logger)
     {
         _repository = repository;
         _postValidator = postValidator;
         _putValidator = putValidator;
         _queryParamsValidator = queryParamsValidator;
+        _logger = logger;
     }
     public async Task<ResultService<BookResponseDTO>> CreateBookAsync(BookPostRequestDto requestDto, CancellationToken ct)
     {
         var validationResult = _postValidator.Validate(requestDto);
         if (!validationResult.IsValid)
+        {
+            _logger.LogWarning("Validation Error: {Errors}",
+                string.Join(", ", validationResult.Errors.Select(e => e.ErrorMessage)));
             return ResultService<BookResponseDTO>.FluentValidationFail(validationResult.Errors);
+        }
 
         var value = requestDto.MapToEntity();
 
@@ -45,8 +52,12 @@ public class BooksService : IBooksService
     {
         var book = await _repository.GetByIdAsync(bookId, ct);
         if (book == null)
+        {
+            _logger.LogWarning("Attemp to delete the book with Id: {bookId} which doesn't exist",
+                bookId);
             return ResultService<BookResponseDTO>.Fail($"There is no book with Id: {bookId}",
                 ServiceErrorCode.NotFound);
+        }
 
         await _repository.DeleteAsync(book, ct);
 
@@ -57,7 +68,11 @@ public class BooksService : IBooksService
     {
         var validationResult = _queryParamsValidator.Validate(parameters);
         if (!validationResult.IsValid)
+        {
+            _logger.LogWarning("Validation Error: {Errors}",
+                string.Join(", ", validationResult.Errors.Select(e => e.ErrorMessage)));
             return ResultService<PagedList<BookResponseDTO>>.FluentValidationFail(validationResult.Errors);
+        }
 
         var query = _repository.GetAllQuery();
 
@@ -83,18 +98,25 @@ public class BooksService : IBooksService
         var pagedBooks = await PagedList<BookResponseDTO>.CreateAsync(queryDto, parameters.PageIndex, parameters.PageSize, ct);
 
         if (pagedBooks.Data.Count == 0)
+        {
+            _logger.LogInformation("There are no books");
             return ResultService<PagedList<BookResponseDTO>>.Fail("There are no books",
                 ServiceErrorCode.NotFound);
+        }
 
         return ResultService<PagedList<BookResponseDTO>>.Ok(pagedBooks!);
     }
 
-    public async Task<ResultService<BookResponseDTO>> GetBookByIdAsync(int id, CancellationToken ct)
+    public async Task<ResultService<BookResponseDTO>> GetBookByIdAsync(int bookId, CancellationToken ct)
     {
-        var book = await _repository.GetByIdAsync(id, ct);
+        var book = await _repository.GetByIdAsync(bookId, ct);
         if (book == null)
-            return ResultService<BookResponseDTO>.Fail($"There is no book wiht Id: {id}",
+        {
+            _logger.LogWarning("Attemp to get the book with Id: {bookId} which doesn't exist",
+                bookId);
+            return ResultService<BookResponseDTO>.Fail($"There is no book wiht Id: {bookId}",
                 ServiceErrorCode.NotFound);
+        }
 
         return ResultService<BookResponseDTO>.Ok(book.MapToDto()!);
     }
@@ -103,18 +125,29 @@ public class BooksService : IBooksService
     {
         var validationResult = _putValidator.Validate(requestDto);
         if (!validationResult.IsValid)
+        {
+            _logger.LogWarning("Validation Error: {Errors}",
+                string.Join(", ", validationResult.Errors.Select(e => e.ErrorMessage)));
             return ResultService<BookResponseDTO>.FluentValidationFail(validationResult.Errors);
+        }
 
         var value = requestDto.MapToEntity();
 
         if (bookId != value.BookId)
+        {
+            _logger.LogWarning("Request ID does not match entity ID.");
             return ResultService<BookResponseDTO>.Fail("Request ID does not match entity ID.",
                ServiceErrorCode.ValidationError);
+        }
 
         var book = await _repository.GetByIdAsync(bookId, ct);
         if (book == null)
+        {
+            _logger.LogWarning("Attempt to update the book with Id: {bookId} which doesn't exist",
+                bookId);
             return ResultService<BookResponseDTO>.Fail($"There is no book with Id: {bookId}",
                 ServiceErrorCode.NotFound);
+        }
 
         await _repository.UpdateAsync(value, ct);
 

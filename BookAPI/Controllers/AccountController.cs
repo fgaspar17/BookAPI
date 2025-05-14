@@ -3,6 +3,7 @@ using System.Security.Claims;
 using BookAPI.DTOs.RequestDTOs;
 using BookAPI.Models;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
@@ -13,18 +14,18 @@ namespace BookAPI.Controllers
     [ApiController]
     public class AccountController : ControllerBase
     {
-        private readonly AppDbContext _context;
+        private readonly ILogger<AccountController> _logger;
 
         private readonly IConfiguration _configuration;
 
         private readonly UserManager<User> _userManager;
 
         public AccountController(
-            AppDbContext context,
+            ILogger<AccountController> logger,
             IConfiguration configuration,
             UserManager<User> userManager)
         {
-            _context = context;
+            _logger = logger;
             _configuration = configuration;
             _userManager = userManager;
         }
@@ -32,6 +33,8 @@ namespace BookAPI.Controllers
         [HttpPost]
         public async Task<ActionResult> Register(RegisterDto input)
         {
+            _logger.LogInformation("User {UserName} attempting to register.", input.UserName);
+
             try
             {
                 if (ModelState.IsValid)
@@ -47,12 +50,15 @@ namespace BookAPI.Controllers
                         $"User '{newUser.UserName}' has been created.");
                     }
                     else
-                        throw new Exception(
-                        string.Format("Error: {0}", string.Join(" ",
-                        result.Errors.Select(e => e.Description))));
+                    {
+                        _logger.LogError("Error: {error}", string.Join(" ",
+                                    result.Errors.Select(e => e.Description)));
+                        return Problem("Error adding the user.", statusCode: 400);
+                    }
                 }
                 else
                 {
+                    _logger.LogWarning("Invalid register attempt for user {UserName}", input.UserName);
                     var details = new ValidationProblemDetails(ModelState);
                     details.Type =
                     "https://tools.ietf.org/html/rfc7231#section-6.5.1";
@@ -62,6 +68,7 @@ namespace BookAPI.Controllers
             }
             catch (Exception e)
             {
+                _logger.LogError(e, "An unexpected error occurred.");
                 var exceptionDetails = new ProblemDetails();
                 exceptionDetails.Detail = e.Message;
                 exceptionDetails.Status =
@@ -77,13 +84,18 @@ namespace BookAPI.Controllers
         [HttpPost]
         public async Task<ActionResult> Login(LoginDto input)
         {
+            _logger.LogInformation("User {UserName} attempting to login.", input.UserName);
+
             try
             {
                 if (ModelState.IsValid)
                 {
                     var user = await _userManager.FindByNameAsync(input.UserName);
                     if (user == null || !await _userManager.CheckPasswordAsync(user, input.Password))
-                        throw new Exception("Invalid login attempt.");
+                    {
+                        _logger.LogWarning("Invalid login attempt for user {UserName}", input.UserName);
+                        return BadRequest("Invalid login attempt.");
+                    }
 
                     var roles = await _userManager.GetRolesAsync(user);
                     var roleClaims = roles.Select(r => new Claim(ClaimTypes.Role, r));
@@ -110,6 +122,7 @@ namespace BookAPI.Controllers
 
                 else
                 {
+                    _logger.LogWarning("Invalid login attempt for user {UserName}", input.UserName);
                     var details = new ValidationProblemDetails(ModelState);
                     details.Type =
                     "https://tools.ietf.org/html/rfc7231#section-6.5.1";
@@ -119,6 +132,7 @@ namespace BookAPI.Controllers
             }
             catch (Exception e)
             {
+                _logger.LogError(e, "An unexpected error occurred.");
                 var exceptionDetails = new ProblemDetails();
                 exceptionDetails.Detail = e.Message;
                 exceptionDetails.Status =

@@ -15,7 +15,7 @@ public class AuthorBooksRepository : IAuthorBooksRepository
     {
         return await _context.AuthorBooks
                 .Where(ab => ab.AuthorId == authorId && ab.BookId == bookId)
-                .SingleOrDefaultAsync();
+                .SingleOrDefaultAsync(ct);
     }
 
     public async Task DeleteAsync(AuthorBook value, CancellationToken ct)
